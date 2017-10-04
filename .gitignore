@@ -13,21 +13,16 @@
 *.userprefs
 
 # Build results
-
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
 x64/
 x86/
 bld/
-#bin/
-#debug/
+bin/
+debug/
 [Oo]bj/
 [Ll]og/
-
-# Exceptions - NOT WORKING
-#!debug/music.xml
-#!Debug/music.xsd
 
 # Visual Studio 2015 cache/options directory
 .vs/
