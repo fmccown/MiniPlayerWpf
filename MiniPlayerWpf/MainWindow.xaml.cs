@@ -16,6 +16,7 @@ namespace MiniPlayerWpf
     {
         private DataSet musicDataSet;
         private MediaPlayer mediaPlayer;
+        private ObservableCollection<string> songIds;
 
         public MainWindow()
         {
@@ -44,12 +45,12 @@ namespace MiniPlayerWpf
                       orderby row["id"]
                       select row["id"].ToString();
 
-            // Put the ids to a ObservableCollection which has a Remove method for use later.
+            // Put the ids in an ObservableCollection, which has Add & Remove methods for use later.
             // The UI will update itself automatically if any changes are made to this collection.
-            ObservableCollection<string> items = new ObservableCollection<string>(ids);     
+            songIds = new ObservableCollection<string>(ids);     
 
             // Bind the song IDs to the combo box
-            songIdComboBox.ItemsSource = items;
+            songIdComboBox.ItemsSource = songIds;
             
             // Select the first item
             if (songIdComboBox.Items.Count > 0)
@@ -163,10 +164,10 @@ namespace MiniPlayerWpf
             row["genre"] = genreTextBox.Text;
             table.Rows.Add(row);
 
-            // Now that the id has been set, add it to the combo box
+            // Now that the id has been set, add it songIds, which automatically adds to the combo box
             songIdComboBox.IsEnabled = true;
             string id = row["id"].ToString();
-            (songIdComboBox.ItemsSource as ObservableCollection<string>).Add(id);
+            songIds.Add(id);
             songIdComboBox.SelectedIndex = songIdComboBox.Items.Count - 1;
 
             // There is at least one song that can be deleted
@@ -218,9 +219,8 @@ namespace MiniPlayerWpf
                 foreach (DataRow row in rows)
                     row.Delete();
 
-                // Remove the song from the list box and select the next item
-                (songIdComboBox.ItemsSource as ObservableCollection<string>).Remove(
-                    songIdComboBox.SelectedItem.ToString());
+                // Remove the song from the combo box and select the next item
+                songIds.Remove(songIdComboBox.SelectedItem.ToString());
                 if (songIdComboBox.Items.Count > 0)
                     songIdComboBox.SelectedItem = songIdComboBox.Items[0];
                 else
