@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace MiniPlayerWpf
@@ -17,6 +18,11 @@ namespace MiniPlayerWpf
         private DataSet musicDataSet;
         private MediaPlayer mediaPlayer;
         private ObservableCollection<string> songIds;
+
+        // Custom commands
+        public static RoutedCommand Add = new RoutedCommand();
+        public static RoutedCommand Update = new RoutedCommand();
+
 
         public MainWindow()
         {
@@ -32,7 +38,7 @@ namespace MiniPlayerWpf
             }
             catch (Exception e)
             {
-                MessageBox.Show("Error loading file: " + e.Message);
+                DisplayError("Error loading file: " + e.Message);
             }
 
             PrintAllTables();
@@ -56,7 +62,6 @@ namespace MiniPlayerWpf
             if (songIdComboBox.Items.Count > 0)
             {
                 songIdComboBox.SelectedItem = songIdComboBox.Items[0];
-                deleteButton.IsEnabled = true;
             }
         }
 
@@ -78,37 +83,7 @@ namespace MiniPlayerWpf
                 Console.WriteLine();
             }
         }
-
-        private void openButton_Click(object sender, RoutedEventArgs e)
-        {
-            // Configure open file dialog box
-            Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
-            openFileDialog.FileName = ""; 
-            openFileDialog.DefaultExt = "*.wma;*.wav;*mp3";
-            openFileDialog.Filter = "Media files|*.mp3;*.m4a;*.wma;*.wav|MP3 (*.mp3)|*.mp3|M4A (*.m4a)|*.m4a|Windows Media Audio (*.wma)|*.wma|Wave files (*.wav)|*.wav|All files|*.*";
-
-            // Show open file dialog box
-            bool? result = openFileDialog.ShowDialog();
-
-            // Load the selected song
-            if (result == true)
-            {
-                songIdComboBox.IsEnabled = false;
-                Song s = GetSongDetails(openFileDialog.FileName);
-                if (s != null)
-                {
-                    titleTextBox.Text = s.Title;
-                    artistTextBox.Text = s.Artist;
-                    albumTextBox.Text = s.Album;
-                    genreTextBox.Text = s.Genre;
-                    lengthTextBox.Text = s.Length;
-                    filenameTextBox.Text = s.Filename;
-                    mediaPlayer.Open(new Uri(s.Filename));
-                    addButton.IsEnabled = true;
-                }
-            }
-        }
-
+        
         private Song GetSongDetails(string filename)
         {
             Song song = null;
@@ -146,9 +121,66 @@ namespace MiniPlayerWpf
         private void DisplayError(string errorMessage)
         {
             MessageBox.Show(errorMessage, "MiniPlayer", MessageBoxButton.OK, MessageBoxImage.Error);
+        }         
+
+        private void showDataButton_Click(object sender, RoutedEventArgs e)
+        {
+            PrintAllTables();
+        }
+        
+        private void songIdComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Display the selected song
+            if (songIdComboBox.SelectedItem != null)
+            {
+                Console.WriteLine("Load song " + songIdComboBox.SelectedItem);
+                int songId = Convert.ToInt32(songIdComboBox.SelectedItem);
+                DataTable table = musicDataSet.Tables["song"];
+
+                // Only one row should be selected
+                foreach (DataRow row in table.Select("id=" + songId))
+                {
+                    titleTextBox.Text = row["title"].ToString();
+                    artistTextBox.Text = row["artist"].ToString();
+                    albumTextBox.Text = row["album"].ToString();
+                    genreTextBox.Text = row["genre"].ToString();
+                    lengthTextBox.Text = row["length"].ToString();
+                    filenameTextBox.Text = row["filename"].ToString();                    
+                }
+            }
         }
 
-        private void addButton_Click(object sender, RoutedEventArgs e)
+        private void OpenCommand_Executed(object sender, System.Windows.Input.ExecutedRoutedEventArgs e)
+        {
+            // Configure open file dialog box
+            Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
+            openFileDialog.FileName = "";
+            openFileDialog.DefaultExt = "*.wma;*.wav;*mp3";
+            openFileDialog.Filter = "Media files|*.mp3;*.m4a;*.wma;*.wav|MP3 (*.mp3)|*.mp3|M4A (*.m4a)|*.m4a|Windows Media Audio (*.wma)|*.wma|Wave files (*.wav)|*.wav|All files|*.*";
+
+            // Show open file dialog box
+            bool? result = openFileDialog.ShowDialog();
+
+            // Load the selected song
+            if (result == true)
+            {
+                songIdComboBox.IsEnabled = false;
+                Song s = GetSongDetails(openFileDialog.FileName);
+                if (s != null)
+                {
+                    titleTextBox.Text = s.Title;
+                    artistTextBox.Text = s.Artist;
+                    albumTextBox.Text = s.Album;
+                    genreTextBox.Text = s.Genre;
+                    lengthTextBox.Text = s.Length;
+                    filenameTextBox.Text = s.Filename;
+                    mediaPlayer.Open(new Uri(s.Filename));
+                    addButton.IsEnabled = true;
+                }
+            }
+        }
+
+        private void AddCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             Console.WriteLine("Adding song");
 
@@ -174,7 +206,7 @@ namespace MiniPlayerWpf
             deleteButton.IsEnabled = true;
         }
 
-        private void updateButton_Click(object sender, RoutedEventArgs e)
+        private void UpdateCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             string songId = songIdComboBox.SelectedItem.ToString();
             Console.WriteLine("Updating song " + songId);
@@ -193,9 +225,14 @@ namespace MiniPlayerWpf
             }
         }
 
-        private void deleteButton_Click(object sender, RoutedEventArgs e)
+        private void UpdateCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            if (MessageBox.Show("Are you sure you want to delete this song?", "MiniPlayer", 
+            e.CanExecute = songIds != null && songIds.Count > 0;
+        }
+
+        private void DeleteCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {            
+            if (MessageBox.Show("Are you sure you want to delete this song?", "MiniPlayer",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 string songId = songIdComboBox.SelectedItem.ToString();
@@ -226,7 +263,6 @@ namespace MiniPlayerWpf
                 else
                 {
                     // No more songs to display
-                    deleteButton.IsEnabled = false;
                     titleTextBox.Text = "";
                     artistTextBox.Text = "";
                     albumTextBox.Text = "";
@@ -236,51 +272,29 @@ namespace MiniPlayerWpf
                 }
             }
         }
+        
+        private void DeleteCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = songIds != null && songIds.Count > 0;
+        }
 
-        private void playButton_Click(object sender, RoutedEventArgs e)
+        private void PlayCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             mediaPlayer.Open(new Uri(filenameTextBox.Text));
             mediaPlayer.Play();
         }
 
-        private void stopButton_Click(object sender, RoutedEventArgs e)
+        private void StopCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            mediaPlayer.Stop();
+            mediaPlayer.Stop();            
         }
 
-        private void showDataButton_Click(object sender, RoutedEventArgs e)
-        {
-            PrintAllTables();
-        }
-
-        private void saveButton_Click(object sender, RoutedEventArgs e)
+        private void SaveCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             // Save music.xml in the same directory as the exe
             string filename = "music.xml";
             Console.WriteLine("Saving " + filename);
             musicDataSet.WriteXml(filename);
-        }
-
-        private void songIdComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            // Display the selected song
-            if (songIdComboBox.SelectedItem != null)
-            {
-                Console.WriteLine("Load song " + songIdComboBox.SelectedItem);
-                int songId = Convert.ToInt32(songIdComboBox.SelectedItem);
-                DataTable table = musicDataSet.Tables["song"];
-
-                // Only one row should be selected
-                foreach (DataRow row in table.Select("id=" + songId))
-                {
-                    titleTextBox.Text = row["title"].ToString();
-                    artistTextBox.Text = row["artist"].ToString();
-                    albumTextBox.Text = row["album"].ToString();
-                    genreTextBox.Text = row["genre"].ToString();
-                    lengthTextBox.Text = row["length"].ToString();
-                    filenameTextBox.Text = row["filename"].ToString();                    
-                }
-            }
         }
     }
 }
